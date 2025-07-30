@@ -1,6 +1,6 @@
 MODULE status_0001 OUTPUT.
   SET PF-STATUS '0001'.
-  SET TITLEBAR '0001'.
+  SET TITLEBAR 'SALV VIEW'.
 ENDMODULE.
 
 MODULE user_command_0001 INPUT.
@@ -29,6 +29,7 @@ MODULE user_command_0001 INPUT.
       IF p_sid IS NOT INITIAL. " checks if search by id parameter's value is valid
         PERFORM search_student_by_id.
         LEAVE TO LIST-PROCESSING AND RETURN TO SCREEN 0001. " outputs texts than returns to screen
+        CLEAR: P_uid, p_sname, p_slname.
       ELSEIF p_sname IS NOT INITIAL AND p_slname IS NOT INITIAL. " checks if search by name parameter's value valid
         PERFORM search_student_by_name.
         LEAVE TO LIST-PROCESSING AND RETURN TO SCREEN 0001. " outputs texts than returns to screen
@@ -42,6 +43,7 @@ MODULE user_command_0001 INPUT.
       ELSE. " checks if mail by id parameter's is not valid or initial
         PERFORM send_mail_to_students.
       ENDIF.
+      CLEAR: p_mid.
 
     WHEN 'FILTER'.
       IF p_score1 IS NOT INITIAL AND p_score2 IS NOT INITIAL.
@@ -50,6 +52,7 @@ MODULE user_command_0001 INPUT.
       ELSE.
         MESSAGE 'ENTER TOP AND BOTTOM SCORES' TYPE 'E'.
       ENDIF.
+      CLEAR: p_score1, p_score2.
 
     WHEN 'DEL'.
       PERFORM clear_all_data_with_popup. " calls the popup function to clear whole database
@@ -72,24 +75,53 @@ MODULE user_command_0001 INPUT.
 
     WHEN 'OOALV'.
       PERFORM create_student_ooalv.
-      SET SCREEN 0002.
+      CALL SCREEN 0002.
 
-    WHEN 'BACK' OR 'EXIT' OR 'CANCEL'.
-      LEAVE TO SCREEN 0.
+    WHEN 'EXIT'.
+      IF go_ooalv_students IS BOUND.
+        CALL METHOD go_ooalv_students->free.
+        CLEAR go_ooalv_students.
+        " clears ALV objects
+      ENDIF.
+      IF go_cont IS BOUND.
+        CALL METHOD go_cont->free.
+        CLEAR go_cont.
+      ENDIF.
+      LEAVE PROGRAM.
 
   ENDCASE.
 ENDMODULE.
 
 MODULE status_0002 OUTPUT.
   SET PF-STATUS '0002'.
-  SET TITLEBAR '0002'.
+  SET TITLEBAR 'OO ALV VIEW'.
 ENDMODULE.
 
 MODULE user_command_0002 INPUT.
   CASE sy-ucomm.
-    WHEN '&BACK'.
-      SET SCREEN 0001.
-    WHEN '&EXIT'.
-      LEAVE TO SCREEN 0.
+    WHEN 'BACK'.
+      IF go_ooalv_students IS BOUND.
+        CALL METHOD go_ooalv_students->free.
+        CLEAR go_ooalv_students.
+        " clears ALV objects
+      ENDIF.
+      IF go_cont IS BOUND.
+        CALL METHOD go_cont->free.
+        CLEAR go_cont.
+      ENDIF.
+      LEAVE TO SCREEN 0001.
+
+    WHEN 'EXIT'.
+      IF go_ooalv_students IS BOUND.
+        CALL METHOD go_ooalv_students->free.
+        CLEAR go_ooalv_students.
+        " clears ALV objects
+      ENDIF.
+      IF go_cont IS BOUND.
+        CALL METHOD go_cont->free.
+        CLEAR go_cont.
+      ENDIF.
+      LEAVE PROGRAM.
+
   ENDCASE.
 ENDMODULE.
