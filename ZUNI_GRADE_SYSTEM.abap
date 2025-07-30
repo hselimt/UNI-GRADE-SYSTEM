@@ -10,3 +10,13 @@ START-OF-SELECTION.
   PERFORM initialize_data.
   sy-title = 'UNI GRADE SYSTEM'. " sets title
   CALL SCREEN 0001. " opens screen called 0001
+
+AT USER-COMMAND.
+  CASE sy-ucomm.
+    WHEN 'BACK'.
+      LEAVE LIST-PROCESSING.
+      LEAVE TO SCREEN 0001.
+
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+  ENDCASE.
