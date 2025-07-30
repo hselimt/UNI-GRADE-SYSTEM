@@ -45,7 +45,7 @@ CLASS lcl_age_calculator IMPLEMENTATION. " implements age calculator
     rv_age = sy-datum(4) - iv_bdate(4). " sets age to current year - birth date year
 
     IF sy-datum+4(4) < iv_bdate+4(4).
-      rv_age = rv_age - 1. " substracts 1 from age if current month and date is lower than birth date month and date
+      rv_age = rv_age - 1. " subtracts 1 from age if birthday hasnt occurred this year
     ENDIF.
   ENDMETHOD.
 ENDCLASS.
