@@ -89,6 +89,7 @@ FORM save_student_record.
 ENDFORM.
 
 FORM display_added_student_details.
+  SET PF-STATUS '0001'.
   WRITE: /1  '@0V@', 'NEW STUDENT'.
   WRITE: /3 '├─ STUDENT ID:      ', gs_student_t-studentid COLOR COL_HEADING.
   WRITE: /3 '├─ NAME:            ', gs_student_t-studentname COLOR COL_NORMAL.
@@ -195,6 +196,7 @@ FORM update_student_by_id.
 ENDFORM.
 
 FORM search_student_by_id.
+  SET PF-STATUS '0001'.
   SELECT SINGLE * FROM zstudent_t
     INTO @gs_student_t
     WHERE studentid EQ @p_sid. " searched student id equals to current student id
@@ -216,6 +218,7 @@ FORM search_student_by_id.
 ENDFORM.
 
 FORM search_student_by_name.
+  SET PF-STATUS '0001'.
   SELECT SINGLE * FROM zstudent_t
     INTO @gs_student_t
     WHERE studentname EQ @p_sname AND studentlname EQ @p_slname.
@@ -328,6 +331,7 @@ FORM send_mail_to_students. " if student id is initial
 ENDFORM.
 
 FORM list_students_by_score.
+  SET PF-STATUS '0001'.
   SELECT * FROM zstudent_t
     INTO CORRESPONDING FIELDS OF TABLE @gt_student_t
     WHERE studentscore >= @p_score1 AND studentscore <= @p_score2.
@@ -370,6 +374,7 @@ FORM clear_all_data_with_popup.
 ENDFORM.
 
 FORM display_statistics.
+  SET PF-STATUS '0001'.
   DATA lv_total   TYPE i.
   DATA lv_avg     TYPE p DECIMALS 3. " ,000 type
   DATA lv_passed  TYPE i.
@@ -400,6 +405,7 @@ FORM find_top_student.
 ENDFORM.
 
 FORM display_top_student.
+  SET PF-STATUS '0001'.
   PERFORM find_top_student.
 
   IF ls_max_grade_student IS NOT INITIAL.
@@ -416,6 +422,7 @@ FORM display_top_student.
 ENDFORM.
 
 FORM display_failed_students.
+  SET PF-STATUS '0001'.
   DATA lv_count TYPE i.
 
   WRITE: /1 '@17@', 'FAILED STUDENTS'.
@@ -443,58 +450,36 @@ FORM create_student_salv.
           t_table      = gt_cell_color
       ).
 
-  TRY.
-      DATA(lo_display) = go_salv_students->get_display_settings( ).
-      lo_display->set_list_header( value = 'STUDENT SALV VIEW' ).
+  DATA(lo_display) = go_salv_students->get_display_settings( ).
+  lo_display->set_list_header( value = 'STUDENT SALV VIEW' ).
 
-      DATA(lo_columns) = go_salv_students->get_columns( ).
-      lo_columns->set_color_column( 'ROW_COLOR' ).
-      lo_columns->set_optimize( value = 'X' ).
-    CATCH cx_salv_data_error INTO DATA(lx_error1).
-*   catches error and displays it in error message
-      MESSAGE lx_error1->get_text( ) TYPE 'E'.
-  ENDTRY.
+  DATA(lo_columns) = go_salv_students->get_columns( ).
+  lo_columns->set_color_column( 'ROW_COLOR' ).
+  lo_columns->set_optimize( value = 'X' ).
 
-  TRY.
-      go_salv_students->set_screen_popup(
-      EXPORTING
-        start_column = 20
-        end_column   = 80
-        start_line   = 5
-        end_line     = 15
+  go_salv_students->set_screen_popup(
+    EXPORTING
+      start_column = 20
+      end_column   = 80
+      start_line   = 5
+      end_line     = 15
       ).
-    CATCH cx_salv_msg INTO DATA(lx_error4).
-*   catches error and displays it in error message
-      MESSAGE lx_error4->get_text( ) TYPE 'E'.
 
-  ENDTRY.
-
-  TRY.
-      DATA(lt_columns) = lo_columns->get( ).
-      LOOP AT lt_columns INTO DATA(ls_column).
-        ls_column-r_column->set_alignment(
-            value = if_salv_c_alignment=>centered " set cell values as centered
-        ).
-      ENDLOOP.
-    CATCH cx_salv_data_error INTO DATA(lx_error2).
-*   catches error and displays it in error message
-      MESSAGE lx_error2->get_text( ) TYPE 'E'.
-  ENDTRY.
-
-  TRY.
-      DATA(lo_sorts) = go_salv_students->get_sorts( ).
-      lo_sorts->add_sort(
-      EXPORTING
-        columnname = 'STUDENTSCORE'
-        sequence   = if_salv_c_sort=>sort_down " sorts the rows
+  DATA(lt_columns) = lo_columns->get( ).
+  LOOP AT lt_columns INTO DATA(ls_column).
+    ls_column-r_column->set_alignment(
+       value = if_salv_c_alignment=>centered " set cell values as centered
     ).
-    CATCH cx_salv_msg INTO DATA(lx_error3).
-*   catches error and displays it in error message
-      MESSAGE lx_error3->get_text( ) TYPE 'E'.
-  ENDTRY.
+  ENDLOOP.
+
+  DATA(lo_sorts) = go_salv_students->get_sorts( ).
+  lo_sorts->add_sort(
+    EXPORTING
+      columnname = 'STUDENTSCORE'
+      sequence   = if_salv_c_sort=>sort_down " sorts the rows
+      ).
 
   go_salv_students->display( ). " displays alv
-
 
 ENDFORM.
 
@@ -513,26 +498,54 @@ FORM set_cell_color.
 ENDFORM.
 
 FORM create_student_ooalv.
+* creates objects that holds ALV grid
   CREATE OBJECT go_cont
     EXPORTING
       container_name = 'CC_ALV'.
 
+* create ALV grid if not exists
   IF go_ooalv_students IS NOT BOUND.
     CREATE OBJECT go_ooalv_students
       EXPORTING
         i_parent = go_cont.
   ENDIF.
 
-  SELECT * FROM zstudent_t
-    INTO TABLE gt_ostudent_t.
-*    INTO TABLE @DATA(gt_data).
-    IF sy-subrc EQ 0.
+  PERFORM set_cell_color.
+
+  DATA: ls_layout       TYPE lvc_s_layo,
+        lt_sort         TYPE lvc_t_sort,
+        lt_fieldcatalog TYPE lvc_t_fcat.
+
+* get field catalog
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = 'zstudent_t'
+    CHANGING
+      ct_fieldcat      = lt_fieldcatalog.
+
+
+* center columns
+  LOOP AT lt_fieldcatalog ASSIGNING FIELD-SYMBOL(<fs_fcat>).
+    <fs_fcat>-just = 'C'.
+  ENDLOOP.
+
+  ls_layout-ctab_fname = 'ROW_COLOR'. " color field name
+  ls_layout-cwidth_opt = 'X'. " auto fit columns
+  ls_layout-col_opt = 'X'. " sets cell length accordingly
+
+* sort score by descending
+  APPEND VALUE #( fieldname = 'STUDENTSCORE' down = 'X' ) TO lt_sort.
+
+  IF gt_cell_color IS NOT INITIAL.
     CALL METHOD go_ooalv_students->set_table_for_first_display
       EXPORTING
+        is_layout        = ls_layout
         i_structure_name = 'ZSTUDENT_T'
       CHANGING
-        it_outtab        = gt_ostudent_t.
-    ELSE.
-      MESSAGE 'Değer bulunamamıştır.' TYPE 'E'.
-    ENDIF.
+        it_outtab        = gt_cell_color
+        it_fieldcatalog  = lt_fieldcatalog
+        it_sort          = lt_sort.
+  ELSE.
+    MESSAGE 'ERROR DISPLAYING ALV' TYPE 'E'.
+  ENDIF.
 ENDFORM.
