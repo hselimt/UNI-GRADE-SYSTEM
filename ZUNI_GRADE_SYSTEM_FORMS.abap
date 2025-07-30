@@ -168,6 +168,10 @@ FORM update_student_by_id.
 *     score is not initial and between 0 100 including 0 100
       gs_student_t-studentscore = p_score.
       gs_student_t-studentgrade = lcl_grade_converter=>convertscoretograde( p_score ).
+
+      gs_failed_t-studentscore = p_score.
+
+      PERFORM update_failed_student_table.
     ENDIF.
 
     IF p_mail IS NOT INITIAL AND p_mail CS '@' AND p_mail CS '.'.
@@ -194,6 +198,24 @@ FORM update_student_by_id.
     MESSAGE 'STUDENT NOT FOUND FOR UPDATE' TYPE 'E'.
   ENDIF.
 ENDFORM.
+
+FORM update_failed_student_table.
+  PERFORM handle_failed_students.
+* if updated grade is ff and student doesnt exist in failed students table it adds student to the table
+
+  IF gs_student_t-studentgrade NE 'FF'. 
+    SELECT SINGLE * FROM zfstudent_t
+      WHERE studentid = @p_uid
+      INTO @gs_failed_t.
+* if updated grade is not ff and student does exist in failed students table it removes student to the table
+      
+    IF sy-subrc = 0.
+      DELETE FROM zfstudent_t WHERE studentid = @p_uid.
+      COMMIT WORK.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+
 
 FORM search_student_by_id.
   SET PF-STATUS '0001'.
@@ -427,13 +449,11 @@ FORM display_failed_students.
 
   WRITE: /1 '@17@', 'FAILED STUDENTS'.
 
-  SELECT COUNT(*) FROM zfstudent_t INTO @lv_count. " counts all rows
+  SELECT * FROM zfstudent_t INTO TABLE @gt_failed_t. " fetches data and loops thru table
 
-  IF lv_count > 0. " checks if there are any rows in the table
-    SELECT * FROM zfstudent_t INTO TABLE @gt_failed_t. " fetches data and loops thru table
-
+  IF lines( gt_failed_t ) > 0.
     LOOP AT gt_failed_t INTO gs_failed_t.
-      WRITE: /3 |├─ { gs_failed_t-studentname } { gs_failed_t-studentscore }|.
+      WRITE: /3 |├─ { gs_failed_t-studentid } { gs_failed_t-studentname } { gs_failed_t-studentscore }|.
     ENDLOOP.
   ELSE.
     WRITE: /3 '└─ ','@0A@','NO DATA FOUND'.
