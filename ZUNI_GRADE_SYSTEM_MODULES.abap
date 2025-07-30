@@ -1,9 +1,9 @@
-MODULE status_0001 OUTPUT.
+MODULE status_0001 OUTPUT. " sets GUI status and title for main screen
   SET PF-STATUS '0001'.
   SET TITLEBAR 'SALV VIEW'.
 ENDMODULE.
 
-MODULE user_command_0001 INPUT.
+MODULE user_command_0001 INPUT. " handles user actions on main screen
   CASE sy-ucomm. " stores the function code of the last user action
     WHEN 'ADD'.
       IF p_name IS NOT INITIAL AND p_score >= 0 AND p_score <= 100. " checks if name parameter's value valid
@@ -11,8 +11,8 @@ MODULE user_command_0001 INPUT.
         PERFORM handle_failed_students.
         PERFORM calculate_next_student_id.
         PERFORM display_added_student_details.
-        LEAVE TO LIST-PROCESSING AND RETURN TO SCREEN 0001. " outputs texts than returns to screen
-        CLEAR: p_name, p_lname, p_bdate, p_score, p_mail, gv_mrad, gv_frad.
+        LEAVE TO LIST-PROCESSING AND RETURN TO SCREEN 0001. " outputs texts then returns to screen
+        CLEAR: p_name, p_lname, p_bdate, p_score, p_mail, p_bhv, gv_mrad, gv_frad.
       ELSE.
         MESSAGE 'FILL REQUIRED FIELDS' TYPE 'E'.
       ENDIF.
@@ -20,7 +20,7 @@ MODULE user_command_0001 INPUT.
     WHEN 'UPD'.
       IF p_uid IS NOT INITIAL. " checks if update by id parameter's value is valid
         PERFORM update_student_by_id.
-        CLEAR: p_uid, p_name, p_lname, p_bdate, p_score, p_mail, gv_mrad, gv_frad.
+        CLEAR: p_uid, p_name, p_lname, p_bdate, p_score, p_mail, p_bhv, gv_mrad, gv_frad.
       ELSE.
         MESSAGE 'ENTER STUDENT ID' TYPE 'E'.
       ENDIF.
@@ -92,13 +92,15 @@ MODULE user_command_0001 INPUT.
   ENDCASE.
 ENDMODULE.
 
-MODULE status_0002 OUTPUT.
+MODULE status_0002 OUTPUT. " sets GUI status and title for ALV screen
   SET PF-STATUS '0002'.
   SET TITLEBAR 'OO ALV VIEW'.
 ENDMODULE.
 
-MODULE user_command_0002 INPUT.
+MODULE user_command_0002 INPUT. " handles user actions on ALV screen
   CASE sy-ucomm.
+    WHEN 'SAVE'.
+      PERFORM save_changes_from_bhv.
     WHEN 'BACK'.
       IF go_ooalv_students IS BOUND.
         CALL METHOD go_ooalv_students->free.
