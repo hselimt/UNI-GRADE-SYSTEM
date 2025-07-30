@@ -2,7 +2,7 @@
 
 A fully operational university grade management system built in ABAP for SAP environments.
 
-![LAYOUT](LAYOUT.png)
+![LAYOUT](MAINSCREEN.png)
 
 ## ✨ Features
 
@@ -15,8 +15,8 @@ A fully operational university grade management system built in ABAP for SAP env
 - **Multiple Views**: Both SALV and OO ALV grid displays with color coding
 - **Data Validation**: Input validation for dates, emails, and scores
 
-![SALV screen](SALV.png)
-![OO ALV screen](OOALV.png)
+![SALV POPUP](SALVPOPUPVIEW.png)
+![OO ALV SCREEN](OOALVSCREENVIEW.png)
 
 ## 🗄️ Database Architecture
 
@@ -32,6 +32,7 @@ A fully operational university grade management system built in ABAP for SAP env
 | `ZSTUDENTGEN_DE` | CHAR | 1 | Gender (M/F) |
 | `ZSTUDENT_SCORE_DE` | NUMC | 3 | Test Score (0-100) |
 | `ZSTUDENT_GRADE_DE` | CHAR | 2 | Letter Grade (AA-FF) |
+| `ZSTUDENTBHV_DE` | CHAR | 10 | Behavıour |
 
 ### Database Tables
 - **`ZSTUDENT_T`** - Primary student records table
