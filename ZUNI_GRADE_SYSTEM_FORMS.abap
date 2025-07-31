@@ -26,18 +26,15 @@ FORM update_age_of_all_students. " updates ages of all students
 
   LOOP AT gt_student_t INTO gs_student_t.
     DATA(lv_new_age) = lcl_age_calculator=>calculate_age( gs_student_t-studentbdate ).
-
     IF lv_new_age NE gs_student_t-studentage.
       gs_student_t-studentage = lv_new_age.
 
       UPDATE zstudent_t SET studentage = lv_new_age
                         WHERE studentid = gs_student_t-studentid.
     ENDIF.
-
   ENDLOOP.
 
   COMMIT WORK.
-
 ENDFORM.
 
 FORM prepare_student_record.
@@ -53,7 +50,6 @@ FORM prepare_student_record.
   gs_student_t-studentage   = lcl_age_calculator=>calculate_age( p_bdate ).
   gs_student_t-studentbhv   = p_bhv.
 
-
   IF gv_mrad EQ 'X'. " male button is ticked
     gs_student_t-studentgen = 'M'.
   ELSEIF gv_frad EQ 'X'. " female button is ticked
@@ -61,12 +57,11 @@ FORM prepare_student_record.
   ENDIF.
 
   IF p_bdate <= sy-datum AND p_mail CS '@' AND p_mail CS '.'.
-*   current date >= birth date mail contains @ .
+*   birth date <= current date, mail contains '@' and '.'
     APPEND gs_student_t TO gt_student_t. " adds structure into table
   ELSE.
     MESSAGE 'MAKE SURE TO ENTER VALID VALUES' TYPE 'E'.
   ENDIF.
-
 ENDFORM.
 
 FORM calculate_next_student_id.
@@ -92,6 +87,7 @@ ENDFORM.
 
 FORM display_added_student_details.
   SET PF-STATUS '0001'.
+
   WRITE: /1  '@0V@', 'NEW STUDENT'.
   WRITE: /3 '├─ STUDENT ID:      ', gs_student_t-studentid COLOR COL_HEADING.
   WRITE: /3 '├─ NAME:            ', gs_student_t-studentname COLOR COL_NORMAL.
@@ -114,13 +110,13 @@ ENDFORM.
 
 FORM process_failed_student.
   IF gs_student_t-studentscore BETWEEN 34 AND 35.
-    PERFORM upgrade_student_grade. " it takes the ceiling of score between 34 and 35
+    PERFORM upgrade_student_grade.
+*   it takes ceiling of the score which is between 34 and 35
     MESSAGE 'STUDENT''S GRADE UPGRADED TO DD WITH THE SCORE OF 35' TYPE 'I'.
   ELSE.
-    PERFORM add_to_failed_students. " if not in between of 34 and 35
+    PERFORM add_to_failed_students. " if not in between 34 and 35
     MESSAGE 'STUDENT HAS FAILED THE CLASS AND ADDED TO FAILED LIST' TYPE 'I'.
   ENDIF.
-*   if students score between 34 and 35 it sets score to 35 else it processes failed student operationss
 ENDFORM.
 
 FORM upgrade_student_grade.
@@ -141,7 +137,7 @@ FORM add_to_failed_students.
   MOVE-CORRESPONDING gs_student_t TO gs_failed_t. " moves matching areas to another structure
 
   INSERT zfstudent_t FROM @gs_failed_t.
-
+* adds structure to table
   IF sy-subrc = 0.
     COMMIT WORK.
   ENDIF.
@@ -151,6 +147,7 @@ FORM update_student_by_id.
   SELECT SINGLE * FROM zstudent_t
     INTO @gs_student_t
     WHERE studentid EQ @p_uid.
+*   retrieves single record where student id equels to user input
 
   IF sy-subrc = 0.
     IF p_name IS NOT INITIAL.
@@ -161,14 +158,14 @@ FORM update_student_by_id.
       gs_student_t-studentlname = p_lname.
     ENDIF.
 
-    IF p_bdate IS NOT INITIAL AND p_bdate < sy-datum.
-*     birth date is not initial and its lower than current date
+    IF p_bdate IS NOT INITIAL AND p_bdate <= sy-datum.
+*     birth date is not initial and its <= than current date
       gs_student_t-studentbdate = p_bdate.
       gs_student_t-studentage = lcl_age_calculator=>calculate_age( p_bdate ).
     ENDIF.
 
     IF p_score IS NOT INITIAL AND p_score >= 0 AND p_score <= 100.
-*     score is not initial and between 0 100 including 0 100
+*     score is not initial and 0 <= score <= 100
       gs_student_t-studentscore = p_score.
       gs_student_t-studentgrade = lcl_grade_converter=>convertscoretograde( p_score ).
       gs_failed_t-studentscore = p_score.
@@ -177,7 +174,7 @@ FORM update_student_by_id.
     ENDIF.
 
     IF p_mail IS NOT INITIAL AND p_mail CS '@' AND p_mail CS '.'.
-*     mail is not initial and contains @ .
+*     mail is not initial, mail contains '@' and '.'
       gs_student_t-studentmail = p_mail.
     ENDIF.
 
@@ -226,7 +223,7 @@ FORM update_failed_student_table.
     SELECT SINGLE * FROM zfstudent_t
       WHERE studentid = @p_uid
       INTO @gs_failed_t.
-* if updated grade is not ff and student does exist in failed students table it removes student to the table
+* if updated grade is not ff and student does exist in failed students table it removes student from the table
 
     IF sy-subrc = 0.
       DELETE FROM zfstudent_t WHERE studentid = @p_uid.
@@ -238,9 +235,11 @@ ENDFORM.
 
 FORM search_student_by_id.
   SET PF-STATUS '0001'.
+
   SELECT SINGLE * FROM zstudent_t
     INTO @gs_student_t
     WHERE studentid EQ @p_sid. " searched student id equals to current student id
+
   IF sy-subrc = 0.
     WRITE: /1  '@08@', 'SEARCHED STUDENT'.
     WRITE: /3 '├─ STUDENT ID:      ', gs_student_t-studentid COLOR COL_HEADING.
@@ -260,10 +259,12 @@ FORM search_student_by_id.
 ENDFORM.
 
 FORM search_student_by_name.
-  SET PF-STATUS '0001'.
+  SET PF-STATUS '0001'. " activates GUI status
+
   SELECT SINGLE * FROM zstudent_t
     INTO @gs_student_t
     WHERE studentname EQ @p_sname AND studentlname EQ @p_slname.
+
   IF sy-subrc = 0.
     WRITE: /1  '@08@', 'SEARCHED STUDENT'.
     WRITE: /3 '├─ STUDENT ID:      ', gs_student_t-studentid COLOR COL_HEADING.
@@ -342,14 +343,18 @@ FORM send_mail_to_students. " if student id is initial
 
     CLEAR: recipients, object_hd.
     doc_chng-obj_descr = 'Grade Report'.
+
     object_hd-line = |HI! { gs_student_t-studentname } { gs_student_t-studentlname }|.
     APPEND object_hd.
+
     object_hd-line = mail_msg.
     APPEND object_hd.
+
     object_hd-line = | YOUR SCORE IS: { gs_student_t-studentscore } |.
     recipients-rec_type = 'U'.
     recipients-receiver = lv_mail_adress.
     APPEND recipients.
+*   adds elements to mail message
 
     CALL FUNCTION 'SO_NEW_DOCUMENT_SEND_API1'
       EXPORTING
@@ -375,13 +380,14 @@ ENDFORM.
 
 FORM list_students_by_score.
   SET PF-STATUS '0001'. " activates GUI status
+
   SELECT * FROM zstudent_t
     INTO CORRESPONDING FIELDS OF TABLE @gt_student_t
     WHERE studentscore >= @p_score1 AND studentscore <= @p_score2.
 
   WRITE: /1 '@08@', 'STUDENTS IN RANGE'.
 
-  IF lines( gt_student_t ) > 0.
+  IF lines( gt_student_t ) > 0. " atleast 1 row exists in the table
     LOOP AT gt_student_t INTO gs_student_t.
       WRITE: /3 '├─   ', gs_student_t-studentname, gs_student_t-studentlname, gs_student_t-studentscore.
     ENDLOOP.
@@ -418,12 +424,12 @@ ENDFORM.
 
 FORM display_statistics.
   SET PF-STATUS '0001'.
-  DATA lv_total   TYPE i.
-  DATA lv_avg     TYPE p DECIMALS 3. " ,000 type
-  DATA lv_passed  TYPE i.
-  DATA lv_failed  TYPE i.
+  DATA: lv_total  TYPE i,
+        lv_avg    TYPE p DECIMALS 3, " ,000 type
+        lv_passed TYPE i,
+        lv_failed TYPE i.
 
-  SELECT COUNT(*) FROM zstudent_t INTO @lv_total. " select all rows from zstudent table
+  SELECT COUNT(*) FROM zstudent_t INTO @lv_total. " gets row count from zstudent table
   SELECT AVG( studentscore ) FROM zstudent_t INTO @lv_avg. " calculates avg student score
   SELECT COUNT(*) FROM zstudent_t INTO @lv_passed WHERE studentscore >= 35.
   lv_failed = lv_total - lv_passed.
@@ -448,7 +454,8 @@ FORM find_top_student.
 ENDFORM.
 
 FORM display_top_student.
-  SET PF-STATUS '0001'.
+  SET PF-STATUS '0001'. " activates GUI status
+
   PERFORM find_top_student.
 
   IF ls_max_grade_student IS NOT INITIAL.
@@ -466,13 +473,14 @@ ENDFORM.
 
 FORM display_failed_students.
   SET PF-STATUS '0001'. " activates GUI status
+
   DATA lv_count TYPE i.
 
   WRITE: /1 '@17@', 'FAILED STUDENTS'.
 
   SELECT * FROM zfstudent_t INTO TABLE @gt_failed_t. " fetches data and loops thru table
 
-  IF lines( gt_failed_t ) > 0. " more than 0 rows
+  IF lines( gt_failed_t ) > 0. " atleast 1 row exists in the table
     LOOP AT gt_failed_t INTO gs_failed_t.
       WRITE: /3 |├─ { gs_failed_t-studentid } { gs_failed_t-studentname } { gs_failed_t-studentscore }|.
     ENDLOOP.
@@ -483,7 +491,6 @@ FORM display_failed_students.
 ENDFORM.
 
 FORM create_student_salv.
-
   cl_salv_table=>factory(
         IMPORTING
           r_salv_table = go_salv_students
@@ -509,7 +516,7 @@ FORM create_student_salv.
   DATA(lt_columns) = lo_columns->get( ).
   LOOP AT lt_columns INTO DATA(ls_column).
     ls_column-r_column->set_alignment(
-       value = if_salv_c_alignment=>centered " set cell values as centered
+       value = if_salv_c_alignment=>centered " sets cell elements as centered
     ).
   ENDLOOP.
 
@@ -520,8 +527,11 @@ FORM create_student_salv.
       sequence   = if_salv_c_sort=>sort_down " sorts the rows
       ).
 
-  go_salv_students->display( ). " displays alv
-
+  IF gt_cell_color IS NOT INITIAL.
+    go_salv_students->display( ). " displays alv
+  ELSE.
+    MESSAGE 'ERROR DISPLAYING ALV SINCE ITS EMPTY' TYPE 'E'.
+  ENDIF.
 ENDFORM.
 
 FORM set_cell_color.
@@ -544,7 +554,7 @@ FORM create_student_ooalv.
     EXPORTING
       container_name = 'CC_ALV'.
 
-* create ALV grid if not exists
+* creates ALV grid if not exists
   IF go_ooalv_students IS NOT BOUND.
     CREATE OBJECT go_ooalv_students
       EXPORTING
@@ -557,7 +567,7 @@ FORM create_student_ooalv.
         lt_sort         TYPE lvc_t_sort,
         lt_fieldcatalog TYPE lvc_t_fcat.
 
-* get field catalog
+* gets field catalog
   CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
     EXPORTING
       i_structure_name = 'zstudent_t'
@@ -570,7 +580,6 @@ FORM create_student_ooalv.
     MODIFY lt_fieldcatalog FROM ls_fieldcatalog INDEX sy-tabix.
   ENDIF.
 
-* center columns
   LOOP AT lt_fieldcatalog ASSIGNING FIELD-SYMBOL(<fs_fcat>).
     <fs_fcat>-just = 'C'.
   ENDLOOP.
@@ -592,7 +601,7 @@ FORM create_student_ooalv.
         it_fieldcatalog  = lt_fieldcatalog
         it_sort          = lt_sort.
   ELSE.
-    MESSAGE 'ERROR DISPLAYING ALV' TYPE 'E'.
+    MESSAGE 'ERROR DISPLAYING ALV SINCE ITS EMPTY' TYPE 'E'.
   ENDIF.
 ENDFORM.
 
@@ -603,8 +612,9 @@ FORM save_changes_from_bhv.
     IMPORTING
       et_index_rows = lt_selected_rows. " stores which rows user selected
 
-  IF lines( lt_selected_rows ) > 0. " more than 0 rows
+  IF lines( lt_selected_rows ) > 0. " atleast 1 row exists in the table
     READ TABLE gt_cell_color INTO gs_cell_color INDEX lt_selected_rows[ 1 ]-index.
+*   get cell color data for first selected row
 
     UPDATE zstudent_t SET studentbhv = @gs_cell_color-studentbhv
                   WHERE studentid = @gs_cell_color-studentid.
@@ -615,7 +625,7 @@ FORM save_changes_from_bhv.
       CALL METHOD go_ooalv_students->refresh_table_display
         EXPORTING
           is_stable = VALUE #( row = 'X' col = 'X' ).
-* keep the current positions stable during refresh
+*         keeps the current positions stable during refresh
     ELSE.
       MESSAGE 'ERROR SAVING DATA' TYPE 'E'.
     ENDIF.
