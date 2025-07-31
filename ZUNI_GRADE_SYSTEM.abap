@@ -14,7 +14,7 @@ START-OF-SELECTION.
 AT USER-COMMAND.
   CASE sy-ucomm.
     WHEN 'BACK'. " hits back button
-      LEAVE LIST-PROCESSING. " exit from list display
+      LEAVE LIST-PROCESSING. " exits from list display
       LEAVE TO SCREEN 0001.
 
     WHEN 'EXIT'. " hits exit button
