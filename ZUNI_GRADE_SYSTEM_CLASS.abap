@@ -64,7 +64,7 @@ CLASS lcl_set_cell_color IMPLEMENTATION.
   METHOD set_cell_color.
     CLEAR rv_color.
     rv_color-fname = 'STUDENTGRADE'.
-    rv_color-color-int = '1'. " set color intensity to make it vibrant
+    rv_color-color-int = '1'. " sets color intensity to make it vibrant
 
     CASE iv_grade.
       WHEN 'FF'.
