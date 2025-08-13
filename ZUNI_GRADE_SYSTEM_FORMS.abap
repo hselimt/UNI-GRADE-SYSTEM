@@ -275,7 +275,7 @@ FORM search_student_by_name.
 ENDFORM.
 
 FORM send_mail_to_student.
-  SELECT SINGLE * FROM zhst_i_std
+  SELECT SINGLE * FROM zstudent_t
       INTO @gs_student_t
       WHERE studentid EQ @p_id.
 
@@ -328,7 +328,7 @@ ENDFORM.
 FORM send_mail_to_students.
   DATA: lt_students TYPE TABLE OF zstudent_t.
 
-  SELECT * FROM zhst_i_std
+  SELECT * FROM zstudent_t
   INTO CORRESPONDING FIELDS OF TABLE @lt_students.
 
   LOOP AT lt_students INTO gs_student_t.
@@ -432,7 +432,7 @@ FORM list_students_by_score.
 
   WRITE: /1 '@08@', 'STUDENTS IN RANGE'.
 
-  IF LINES( gt_student_t ) > 0.
+  IF lines( gt_student_t ) > 0.
     LOOP AT gt_student_t INTO gs_student_t.
       WRITE: /3 '├─   ', gs_student_t-studentname, gs_student_t-studentlname, gs_student_t-studentscore.
     ENDLOOP.
@@ -525,7 +525,7 @@ FORM display_failed_students.
 
   SELECT * FROM zfstudent_t INTO TABLE @gt_failed_t.
 
-  IF LINES( gt_failed_t ) > 0.
+  IF lines( gt_failed_t ) > 0.
     LOOP AT gt_failed_t INTO gs_failed_t.
       WRITE: /3 |├─ { gs_failed_t-studentid } { gs_failed_t-studentname } { gs_failed_t-studentLname } { gs_failed_t-studentscore }|.
     ENDLOOP.
@@ -622,6 +622,11 @@ FORM create_student_ooalv.
     MODIFY lt_fieldcatalog FROM ls_fieldcatalog INDEX sy-tabix.
   ENDIF.
 
+  LOOP AT lt_fieldcatalog INTO ls_fieldcatalog.
+    ls_fieldcatalog-edit = 'X'.
+    MODIFY lt_fieldcatalog FROM ls_fieldcatalog INDEX sy-tabix.
+  ENDLOOP.
+
   LOOP AT lt_fieldcatalog ASSIGNING FIELD-SYMBOL(<fs_fcat>).
     <fs_fcat>-just = 'C'.
   ENDLOOP.
@@ -653,18 +658,28 @@ FORM save_changes_from_bhv.
     IMPORTING
       et_index_rows = lt_selected_rows.
 
-  IF LINES( lt_selected_rows ) > 0.
+  IF lines( lt_selected_rows ) > 0.
     READ TABLE gt_cell_color INTO gs_cell_color INDEX lt_selected_rows[ 1 ]-index.
 
-    UPDATE zstudent_t SET studentbhv = @gs_cell_color-studentbhv
-                  WHERE studentid = @gs_cell_color-studentid.
+    UPDATE zstudent_t SET studentbhv = @gs_cell_color-studentbhv,
+                          studentname = @gs_cell_color-studentname,
+                          studentlname = @gs_cell_color-studentlname,
+                          studentbdate = @gs_cell_color-studentbdate,
+                          studentmail = @gs_cell_color-studentmail,
+                          studentscore = @gs_cell_color-studentscore
+    WHERE studentid = @gs_cell_color-studentid.
+
+    DATA(lv_studentg) = lcl_grade_converter=>convertscoretograde( iv_score = gs_cell_color-studentscore ).
+    DATA(lv_studenta) = lcl_age_calculator=>calculate_age( iv_bdate = gs_cell_color-studentbdate ).
+
+    UPDATE zstudent_t SET studentgrade = @lv_studentg,
+                          studentage = @lv_studenta
+    WHERE studentid = @gs_cell_color-studentid.
 
     IF sy-subrc = 0.
       COMMIT WORK.
+      CALL METHOD go_ooalv_students->refresh_table_display.
       MESSAGE 'DATA SAVED' TYPE 'S'.
-      CALL METHOD go_ooalv_students->refresh_table_display
-        EXPORTING
-          is_stable = VALUE #( row = 'X' col = 'X' ).
     ELSE.
       MESSAGE 'ERROR SAVING DATA' TYPE 'E'.
     ENDIF.
