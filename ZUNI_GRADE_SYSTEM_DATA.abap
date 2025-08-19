@@ -58,10 +58,10 @@ DATA: gv_studentID         TYPE zstudentid_de,
       p_uid                TYPE zstudentid_de,
       p_score1             TYPE i,
       p_score2             TYPE i,
-      recipients           TYPE somlreci1, " who gets mail
+      recipients           TYPE somlreci1 OCCURS 0 WITH HEADER LINE, " who gets mail
 * grows as needed and creates work area with the same name
+      object_hd            TYPE solisti1 OCCURS 0 WITH HEADER LINE, " mail text
       doc_chng             TYPE sodocchgi1, " mail properties
-      object_hd            TYPE solisti1, " mail text
       mail_msg             TYPE c LENGTH 100,
       lv_mail_adress       TYPE c LENGTH 30,
       gs_outparams         TYPE sfpoutputparams,
